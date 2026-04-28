@@ -1,9 +1,42 @@
 pipeline {
     agent any
+    tools {
+        maven 'maven'
+    }
+    environment {
+        IMAGE_NAME = "hello-world"
+        //DOCKER_REPO = "mouni668645/jenkins-cicd-demo"
+    }
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/MounikaReddy93/demorepo.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar'
+            }
+          }
+        }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        stage('Docker Image') {
+            steps {
+                sh '''
+                docker build -t ${IMAGE_NAME}:latest .
+                '''
             }
         }
         stage('Hello') {
